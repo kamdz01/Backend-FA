@@ -1,3 +1,4 @@
+# app/controllers/posts.py
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -14,12 +15,15 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ):
+    """
+    Dependency that retrieves the current authenticated user using the token.
+    """
     token = credentials.credentials
     user = get_user_by_token(db, token)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nieprawidłowy token"
+            detail="Invalid token"
         )
     return user
 
@@ -29,11 +33,17 @@ def add_post(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    AddPost endpoint.
+    Validates the payload, saves the post, and invalidates the cache.
+    """
     new_post = Post(text=post_create.text, owner=current_user)
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
+    
     invalidate_cache(current_user.id)
+    
     return {"postID": new_post.id}
 
 @router.get("/", response_model=list[PostOut])
@@ -41,6 +51,11 @@ def get_posts(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    GetPosts endpoint.
+    Retrieves all posts of the authenticated user.
+    Uses in-memory caching for up to 5 minutes.
+    """
     cached = get_cached_posts(current_user.id)
     if cached is not None:
         return cached
@@ -56,6 +71,10 @@ def delete_post(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    DeletePost endpoint.
+    Deletes a post belonging to the authenticated user and invalidates the cache.
+    """
     post = db.query(Post).filter(
         Post.id == postID,
         Post.user_id == current_user.id
@@ -64,10 +83,12 @@ def delete_post(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post nie znaleziony"
+            detail="Post not found"
         )
     
     db.delete(post)
     db.commit()
+    
     invalidate_cache(current_user.id)
-    return {"detail": "Post usunięty pomyślnie"}
+    
+    return {"detail": "Post deleted successfully"}

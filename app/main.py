@@ -3,12 +3,12 @@ from fastapi import FastAPI
 from app.db.session import engine
 from app.db.base import Base
 from app.controllers import router as api_router
-import app.models  # Import modeli, aby zostały zarejestrowane
+import app.models  # Ensure models are imported so they are registered
 
-# Tworzenie tabel w bazie danych (jeśli nie istnieją)
+# Create database tables if they do not exist
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="MVC FastAPI Application")
 
-# Rejestracja routera API
+# Include the API router
 app.include_router(api_router)

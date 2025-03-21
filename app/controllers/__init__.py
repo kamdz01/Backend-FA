@@ -1,3 +1,4 @@
+# app/controllers/__init__.py
 from fastapi import APIRouter
 from app.controllers import auth, posts
 
